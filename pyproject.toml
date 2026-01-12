@@ -1,0 +1,20 @@
+[project]
+name = "send-benchmarking"
+version = "0.0.1"
+description = "A SEND benchmarking web-tool using published data"
+authors = [
+    {name = "William Levack Payne",email = "108789355+WillLP-code@users.noreply.github.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django (>=6.0.1,<7.0.0)",
+    "plotly (>=6.5.1,<7.0.0)",
+    "black (>=25.12.0,<26.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
