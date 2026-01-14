@@ -1,0 +1,6 @@
+<!-- Allows the current (active) page to have different formatting -->
+<li class="nav-item">
+    <a href="{% url url %}{% if query %}?{{query}}{% endif %}"
+       class="nav-link px-2.5 {% if request.resolver_match.url_name in url_names %}active{% endif %}"
+       aria-current="page">{{ name }}</a>
+</li>

@@ -26,19 +26,22 @@ def home(request):
         initial={"phase": "Total", "establishment": "Total"},
     )
     if form.is_valid():
-        phase_selected = int(form["year"].value())
-        establishment = form["placement"].value()
+        phase_selected = form["phase"].value()
+        establishment = form["establishment"].value()
+        establishment = [establishment for establishment in establishment]
     else:
         phase_selected = "Total"
-        establishment = "Total"
+        establishment = ["Total"]
 
     phase_slice = phase_type[
-        (phase_type["phase_type_grouping"] == "Total")
-        & (phase_type["type_of_establishment"] == "Total")
+        (phase_type["phase_type_grouping"] == phase_selected)
+        & (phase_type["type_of_establishment"].isin(establishment))
         & (phase_type["time_period"].astype("str") == "202425")
     ]
 
-    plot = px.bar(phase_slice, x="la_name", y="ehc_plan_percent").to_html()
+    plot = px.bar(
+        phase_slice, x="la_name", y="ehc_plan_percent", color="type_of_establishment"
+    ).to_html()
 
     return render(
         request, "benchmarking_app/views/home.html", {"plot": plot, "form": form}
