@@ -1,0 +1,14 @@
+To do:
+For all charts:
+> we can get RRI/RP10k by multiplying the percent columns if wanted
+> Ability to select stat neighbours to benchmark - need data and a way to select (could do plotly color or just slice entire df)
+> whole national charts highlighting stat neighbours, england, region, specific LA
+> dropdown slicers: LA, phase type grouping, type of establishment, hospital school?, measure type
+
+Chart pages:
+> line chart for england, stat neighbours, specific la showing measures over time 
+> vertical bar showing national distribution (remove la names and highlight specifics)
+> line chart showing specific la and stat neighbours
+
+Overall:
+Refactor data work to datacontainer inc. dropdown choices etc
