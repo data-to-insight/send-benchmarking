@@ -22,9 +22,11 @@ def location_picker(row):
 #         return 'Other LAs'
 
 
-def chart_colour_picker(row, la_selected, region_selected):
+def chart_colour_picker(row, la_selected, region_selected, stat_neighbours_list):
     if row == la_selected:
         return la_selected
+    elif row in stat_neighbours_list:
+        return "Stat Neighbours"
     elif row == region_selected:
         return region_selected
     elif row == "England":
