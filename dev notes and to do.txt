@@ -1,14 +1,27 @@
 To do:
 For all charts:
-> we can get RRI/RP10k by multiplying the percent columns if wanted
-> Ability to select stat neighbours to benchmark - need data and a way to select (could do plotly color or just slice entire df)
-> whole national charts highlighting stat neighbours, england, region, specific LA
+> Ability to select stat neighbours to benchmark - need data and a way to select (could do plotly color or just slice entire df) DONE
+> whole national charts highlighting stat neighbours, england, region, specific LA DONE
 > dropdown slicers: LA, phase type grouping, type of establishment, hospital school?, measure type
+> Tables of data
+> Number and percent on same page?
+> Ability to select different breakdowns eg age, phase, year group etc.
 
 Chart pages:
-> line chart for england, stat neighbours, specific la showing measures over time 
-> vertical bar showing national distribution (remove la names and highlight specifics)
-> line chart showing specific la and stat neighbours
+> line chart for england, stat neighbours, specific la showing measures over time DONE 
+> vertical bar showing national distribution (remove la names and highlight specifics) DONE 
+> line chart showing specific la and stat neighbours DONE
+> Choropleth
+> Specifc LA pages
+
 
 Overall:
 Refactor data work to datacontainer inc. dropdown choices etc
+see difference between years (percentage change over time)
+
+Potential measures:
+> Percentage of change
+> comparing placement locations to other LAs
+> comparing percentages of primary needs to other LAs
+> Where new plans are placed -> where is the pressure
+> Within a placement type the distribution of primary needs

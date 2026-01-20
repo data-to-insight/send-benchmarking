@@ -1,11 +1,13 @@
 import pandas as pd
 import plotly.express as px
+from glob import glob
+import os
 
 from django.conf import settings
 from django.shortcuts import render
 
 from send_benchmarking.settings import BASE_DIR
-from benchmarking_app.forms import SingleYearChoice, TrendChoice
+from benchmarking_app.forms import SingleYearChoice, TrendChoice, SingleYearChoiceEHCP
 
 from benchmarking_app.utils import chart_colour_picker, location_picker
 
@@ -15,6 +17,105 @@ def home(request):
     return render(
         request,
         "benchmarking_app/views/home.html",
+    )
+
+
+def single_year_ehcp_graphs(request):
+    files = glob(os.path.join(BASE_DIR, "static/EHCP Data/*.csv"))
+
+    dfs = {}
+
+    for file in files:
+        with open(file) as f:
+            name = file.split(sep="/")[-1][:-4]
+            dfs[name] = pd.read_csv(file)
+
+    with open(BASE_DIR / "static/SEND_data/stat neighbours.csv") as f:
+        stat_neighbours = pd.read_csv(f)
+
+    requests = dfs["requests"]
+    measures = requests.columns[12:]
+
+    form = SingleYearChoiceEHCP(
+        request.POST or None,
+        year_choices={year: year for year in requests["time_period"].unique()},
+        la_choices={
+            la: la for la in requests[requests["la_name"].notna()]["la_name"].unique()
+        },
+        breakdown_topic_choices={
+            topic: topic for topic in requests["breakdown_topic"].unique()
+        },
+        breakdown_choices={
+            breakdown: breakdown for breakdown in requests["breakdown"].unique()
+        },
+        measure_choices={measure: measure for measure in measures},
+        initial={
+            "breakdown_topic": "All requests for EHC needs assessments",
+            "breakdown": "All requests for EHC needs assessments",
+            "measure": "requests_received_in_year",
+        },
+    )
+    if form.is_valid():
+        la_selected = form["la"].value()
+        year = str(form["year"].value())
+        breakdown_topic_selected = form["breakdown_topic"].value()
+        breakdown_selected = form["breakdown"].value()
+        measure_selected = form["measure"].value()
+    else:
+        la_selected = "Gateshead"
+        year = "2024"
+        breakdown_topic_selected = "All requests for EHC needs assessments"
+        breakdown_selected = "All requests for EHC needs assessments"
+        measure_selected = "requests_received_in_year"
+
+    df = requests[
+        (requests["time_period"].astype("str") == str(year))
+        & (requests["breakdown_topic"] == breakdown_topic_selected)
+        & (requests["breakdown"] == breakdown_selected)
+    ]
+    df[measure_selected] = pd.to_numeric(requests[measure_selected], errors="coerce")
+
+    df["location_name"] = df.apply(location_picker, axis=1)
+
+    region_selected = df[df["la_name"] == la_selected]["region_name"].to_list()[0]
+
+    stat_neighbours_list = stat_neighbours[la_selected].to_list()
+
+    # We need a location name column for the chart, otherwise la_name values htat are empty (eg the whole of england or a region) don't show up
+    df["chart_colour"] = df["location_name"].apply(
+        chart_colour_picker,
+        la_selected=la_selected,
+        region_selected=region_selected,
+        stat_neighbours_list=stat_neighbours_list,
+    )
+
+    plot = px.bar(
+        df,
+        y="location_name",
+        x=measure_selected,
+        title=measure_selected,
+        labels={
+            "location_name": "LA",
+        },
+        color="chart_colour",
+    )
+
+    plot.update_layout(
+        xaxis={
+            "categoryorder": "total descending",
+        },
+        height=1000,
+    )
+    plot.update_yaxes(showticklabels=False)
+
+    plot = plot.to_html()
+
+    text = df[measure_selected].max() + 100
+
+    return render(
+        request,
+        "benchmarking_app/views/single_year_ehcp_graphs.html",
+        {"text": text, "plot": plot, "form": form},
     )
 
 
@@ -61,7 +162,8 @@ def single_year_graphs(request):
     phase_slice = phase_type[
         (phase_type["phase_type_grouping"] == phase_selected)
         & (phase_type["type_of_establishment"].isin(establishment))
-        & (phase_type["time_period"].astype("str") == year)  & (phase_type['hospital_school'] == 'Total')
+        & (phase_type["time_period"].astype("str") == year)
+        & (phase_type["hospital_school"] == "Total")
     ]
 
     phase_slice["location_name"] = phase_slice.apply(location_picker, axis=1)
@@ -122,7 +224,9 @@ def trend_graphs(request):
         phase_type["ehc_plan_percent"], errors="coerce"
     )
     # phase_type["time_period_str"] = phase_type["time_period"].astype("str")
-    phase_type['year'] = phase_type['time_period'].apply(lambda x: pd.to_datetime(str(x)[:4], format='%Y') + pd.DateOffset(years=1))
+    phase_type["year"] = phase_type["time_period"].apply(
+        lambda x: pd.to_datetime(str(x)[:4], format="%Y") + pd.DateOffset(years=1)
+    )
 
     form = TrendChoice(
         request.POST or None,
@@ -151,7 +255,8 @@ def trend_graphs(request):
 
     phase_slice = phase_type[
         (phase_type["phase_type_grouping"] == phase_selected)
-        & (phase_type["type_of_establishment"].isin(establishment)) & (phase_type['hospital_school'] == 'Total')
+        & (phase_type["type_of_establishment"].isin(establishment))
+        & (phase_type["hospital_school"] == "Total")
     ]
 
     phase_slice["location_name"] = phase_slice.apply(location_picker, axis=1)
@@ -163,10 +268,9 @@ def trend_graphs(request):
     stat_neighbours_list = stat_neighbours[la_selected].to_list()
 
     phase_slice_neighbours = phase_slice[
-        (
-            phase_slice["location_name"] == la_selected)
-            | (phase_slice["location_name"] == "England")
-            | (phase_slice["location_name"] == region_selected)
+        (phase_slice["location_name"] == la_selected)
+        | (phase_slice["location_name"] == "England")
+        | (phase_slice["location_name"] == region_selected)
     ].copy()
 
     # We need a location name column for the chart, otherwise la_name values htat are empty (eg the whole of england or a region) don't show up
@@ -206,6 +310,7 @@ def trend_graphs(request):
         {"plot": plot, "form": form},
     )
 
+
 def stat_neighbour_trend_graphs(request):
 
     with open(BASE_DIR / "static/SEND_data/sen_phase_type_.csv") as f:
@@ -218,7 +323,9 @@ def stat_neighbour_trend_graphs(request):
         phase_type["ehc_plan_percent"], errors="coerce"
     )
     # phase_type["time_period_str"] = phase_type["time_period"].astype("str")
-    phase_type['year'] = phase_type['time_period'].apply(lambda x: pd.to_datetime(str(x)[:4], format='%Y') + pd.DateOffset(years=1))
+    phase_type["year"] = phase_type["time_period"].apply(
+        lambda x: pd.to_datetime(str(x)[:4], format="%Y") + pd.DateOffset(years=1)
+    )
 
     form = TrendChoice(
         request.POST or None,
@@ -247,7 +354,8 @@ def stat_neighbour_trend_graphs(request):
 
     phase_slice = phase_type[
         (phase_type["phase_type_grouping"] == phase_selected)
-        & (phase_type["type_of_establishment"].isin(establishment)) & (phase_type['hospital_school'] == 'Total')
+        & (phase_type["type_of_establishment"].isin(establishment))
+        & (phase_type["hospital_school"] == "Total")
     ]
 
     phase_slice["location_name"] = phase_slice.apply(location_picker, axis=1)
@@ -259,9 +367,8 @@ def stat_neighbour_trend_graphs(request):
     stat_neighbours_list = stat_neighbours[la_selected].to_list()
 
     phase_slice_neighbours = phase_slice[
-        (
-            phase_slice["location_name"] == la_selected)
-            | (phase_slice["location_name"].isin(stat_neighbours_list))
+        (phase_slice["location_name"] == la_selected)
+        | (phase_slice["location_name"].isin(stat_neighbours_list))
     ].copy()
 
     # We need a location name column for the chart, otherwise la_name values htat are empty (eg the whole of england or a region) don't show up
@@ -283,7 +390,7 @@ def stat_neighbour_trend_graphs(request):
         labels={
             "ehc_plan_percent_float": "Percent of CYP with EHC plan",
             "chart_colour": "",
-            'location_name':""
+            "location_name": "",
         },
     )
 
