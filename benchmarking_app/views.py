@@ -4,10 +4,17 @@ from glob import glob
 import os
 
 from django.conf import settings
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 
 from send_benchmarking.settings import BASE_DIR
-from benchmarking_app.forms import SingleYearChoice, TrendChoice, SingleYearChoiceEHCP
+from benchmarking_app.forms import (
+    SingleYearChoice,
+    TrendChoice,
+    SingleYearChoiceEHCP,
+    SelectEHCPDataset,
+)
 
 from benchmarking_app.utils import chart_colour_picker, location_picker
 
@@ -20,7 +27,7 @@ def home(request):
     )
 
 
-def single_year_ehcp_graphs(request):
+def select_ehcp_dataset(request):
     files = glob(os.path.join(BASE_DIR, "static/EHCP Data/*.csv"))
 
     dfs = {}
@@ -30,29 +37,54 @@ def single_year_ehcp_graphs(request):
             name = file.split(sep="/")[-1][:-4]
             dfs[name] = pd.read_csv(file)
 
+    datasets = {dataset: dataset for dataset in list(dfs.keys())}
+
+    form = SelectEHCPDataset(
+        request.POST or None,
+        dataset_choices=datasets,
+        initial={
+            "dataset": "requests",
+        },
+    )
+    if form.is_valid():
+        dataset_selected = form["dataset"].value()
+        request.session["dataset_selected"] = dataset_selected
+        return HttpResponseRedirect(reverse("single_year_ehcp_graphs"))
+    return render(
+        request, "benchmarking_app/views/select_ehcp_dataset.html", {"form": form}
+    )
+
+
+def single_year_ehcp_graphs(request):
+    if "dataset_selected" in request.session:
+        dataset_selected = request.session["dataset_selected"]
+    else:
+        dataset_selected = "requests"
+
+    filepath = os.path.join(BASE_DIR, "static/EHCP Data/", f"{dataset_selected}.csv")
+    with open(filepath) as f:
+        df = pd.read_csv(f)
+
     with open(BASE_DIR / "static/SEND_data/stat neighbours.csv") as f:
         stat_neighbours = pd.read_csv(f)
 
-    requests = dfs["requests"]
-    measures = requests.columns[12:]
+    measures = df.columns[12:]
 
     form = SingleYearChoiceEHCP(
         request.POST or None,
-        year_choices={year: year for year in requests["time_period"].unique()},
-        la_choices={
-            la: la for la in requests[requests["la_name"].notna()]["la_name"].unique()
-        },
+        year_choices={year: year for year in df["time_period"].unique()},
+        la_choices={la: la for la in df[df["la_name"].notna()]["la_name"].unique()},
         breakdown_topic_choices={
-            topic: topic for topic in requests["breakdown_topic"].unique()
+            topic: topic for topic in df["breakdown_topic"].unique()
         },
         breakdown_choices={
-            breakdown: breakdown for breakdown in requests["breakdown"].unique()
+            breakdown: breakdown for breakdown in df["breakdown"].unique()
         },
         measure_choices={measure: measure for measure in measures},
         initial={
-            "breakdown_topic": "All requests for EHC needs assessments",
-            "breakdown": "All requests for EHC needs assessments",
-            "measure": "requests_received_in_year",
+            "breakdown_topic": list(df["breakdown_topic"].unique())[0],
+            "breakdown": list(df["breakdown"].unique())[0],
+            "measure": measures[0],
         },
     )
     if form.is_valid():
@@ -64,16 +96,25 @@ def single_year_ehcp_graphs(request):
     else:
         la_selected = "Gateshead"
         year = "2024"
-        breakdown_topic_selected = "All requests for EHC needs assessments"
-        breakdown_selected = "All requests for EHC needs assessments"
-        measure_selected = "requests_received_in_year"
+        breakdown_topic_selected = list(df["breakdown_topic"].unique())[0]
+        breakdown_selected = list(df["breakdown"].unique())[0]
+        measure_selected = measures[0]
 
-    df = requests[
-        (requests["time_period"].astype("str") == str(year))
-        & (requests["breakdown_topic"] == breakdown_topic_selected)
-        & (requests["breakdown"] == breakdown_selected)
-    ]
-    df[measure_selected] = pd.to_numeric(requests[measure_selected], errors="coerce")
+    if measure_selected[-2:] == "pc":
+        df = df[
+            (df["time_period"].astype("str") == str(year))
+            & (df["breakdown_topic"] == breakdown_topic_selected)
+            & (df["breakdown"] == breakdown_selected)
+        ].copy()
+    else:
+        df = df[
+            (df["time_period"].astype("str") == str(year))
+            & (df["breakdown_topic"] == breakdown_topic_selected)
+            & (df["breakdown"] == breakdown_selected)
+            & (df["la_name"].notna())
+        ].copy()
+
+    df[measure_selected] = pd.to_numeric(df[measure_selected], errors="coerce")
 
     df["location_name"] = df.apply(location_picker, axis=1)
 
@@ -110,7 +151,7 @@ def single_year_ehcp_graphs(request):
 
     plot = plot.to_html()
 
-    text = df[measure_selected].max() + 100
+    text = request.session["dataset_selected"]
 
     return render(
         request,

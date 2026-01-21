@@ -67,6 +67,33 @@ class SingleYearChoice(forms.Form):
     )
 
 
+class SelectEHCPDataset(forms.Form):
+    """
+    Used in analysis pages to make dropsdown widgets for phase type and establishment type selection.
+
+    Phase type and establishment type choices must be passed from views as such:
+    form = PhaseEstablishmentChoice(
+            phase_choices=datacontainer.phase_choices,
+            eastablishment_choices=datacontainer.establishment_choices,
+        )
+    """
+
+    def __init__(self, *args, **kwargs):
+        dataset_choices = kwargs.pop("dataset_choices")
+        super(SelectEHCPDataset, self).__init__(*args, **kwargs)
+
+        # Single choice select for LA.
+        self.fields["dataset"] = forms.ChoiceField(
+            widget=s2forms.Select2Widget,
+            label="Select dataset",
+            required=True,
+            choices=dataset_choices,
+        )
+
+    helper = FormHelper()
+    helper.add_input(Submit("submit", "Select Dataset", css_class="btn-primary"))
+
+
 class SingleYearChoiceEHCP(forms.Form):
     """
     Used in analysis pages to make dropsdown widgets for phase type and establishment type selection.
