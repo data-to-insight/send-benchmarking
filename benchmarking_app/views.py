@@ -120,8 +120,6 @@ def single_year_ehcp_graphs(request):
 
     df["location_name"] = df.apply(location_picker, axis=1)
 
-    
-
     stat_neighbours_list = stat_neighbours[la_selected].to_list()
 
     # We need a location name column for the chart, otherwise la_name values htat are empty (eg the whole of england or a region) don't show up
