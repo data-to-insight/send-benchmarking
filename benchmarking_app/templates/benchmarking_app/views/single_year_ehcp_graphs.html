@@ -8,6 +8,7 @@
     <div class="col">
         {{ form.media }}
         <form method="POST">{% csrf_token %}{% crispy form %}</form>
+        <a href="select_ehcp_dataset" class="btn btn-secondary btn-sm active" role="button" aria-pressed="true">Return to dataset selection</a>
     </div>
 <ul>
     {{plot|safe}}

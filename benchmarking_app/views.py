@@ -100,6 +100,8 @@ def single_year_ehcp_graphs(request):
         breakdown_selected = list(df["breakdown"].unique())[0]
         measure_selected = measures[0]
 
+    region_selected = df[df["la_name"] == la_selected]["region_name"].to_list()[0]
+
     if measure_selected[-2:] == "pc":
         df = df[
             (df["time_period"].astype("str") == str(year))
@@ -118,7 +120,7 @@ def single_year_ehcp_graphs(request):
 
     df["location_name"] = df.apply(location_picker, axis=1)
 
-    region_selected = df[df["la_name"] == la_selected]["region_name"].to_list()[0]
+    
 
     stat_neighbours_list = stat_neighbours[la_selected].to_list()
 
