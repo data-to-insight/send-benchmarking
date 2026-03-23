@@ -16,7 +16,8 @@ dependencies = [
     "django-crispy-forms (>=2.5,<3.0)",
     "django-select2 (>=8.4.8,<9.0.0)",
     "django-bootstrap5 (>=26.1,<27.0)",
-    "django-bootstrap (>=0.2.4,<0.3.0)"
+    "django-bootstrap (>=0.2.4,<0.3.0)",
+    "crispy-bootstrap5 (>=2025.6,<2026.0)"
 ]
 
 
